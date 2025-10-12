@@ -1,10 +1,41 @@
 use crate::U256;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+// Type Definitions
 pub struct Blockchain {
     pub blocks: Vec<Block>,
 }
 
+pub struct Block {
+    pub header: BlockHeader,
+    pub transactions: Vec<Transaction>,
+}
+
+pub struct BlockHeader {
+    pub timestamp: DateTime<Utc>,
+    pub nonce: u64,
+    pub prev_block_hash: [u8; 32],
+    pub merkle_root: [u8; 32],
+    pub target: U256,
+}
+pub struct Transaction {
+    pub inputs: Vec<TransactionInput>,
+    pub outputs: Vec<TransactionOutput>,
+}
+
+pub struct TransactionInput {
+    pub prev_transaction_output_hash: [u8; 32],
+    pub signature: [u8; 64], // dummy type
+}
+
+pub struct TransactionOutput {
+    pub value: u64,
+    pub unique_id: Uuid,
+    pub pubkey: [u8; 33], // dummy type
+}
+
+// Methods
 impl Blockchain {
     pub fn new() -> Self {
         Blockchain { blocks: vec![] }
@@ -12,11 +43,6 @@ impl Blockchain {
     pub fn add_block(&mut self, block: Block) {
         self.blocks.push(block);
     }
-}
-
-pub struct Block {
-    pub header: BlockHeader,
-    pub transactions: Vec<Transaction>,
 }
 
 impl Block {
@@ -34,17 +60,9 @@ impl Block {
     }
 }
 
-pub struct BlockHeader {
-    pub timestamp: u64,
-    pub nonce: u64,
-    pub prev_block_hash: [u8; 32],
-    pub merkle_root: [u8; 32],
-    pub target: U256,
-}
-
 impl BlockHeader {
     pub fn new(
-        timestamp: u64,
+        timestamp: DateTime<Utc>,
         nonce: u64,
         prev_block_hash: [u8; 32],
         merkle_root: [u8; 32],
@@ -63,22 +81,17 @@ impl BlockHeader {
     }
 }
 
-pub struct Transaction {
-    pub inputs: Vec<TransactionInput>,
-    pub outpus: Vec<TransactionOutput>,
-}
-
-pub struct TransactionInput {
-    pub prev_transaction_output_hash: [u8; 32],
-    pub signature: [u8; 64],
-}
-
-pub struct TransactionOutput {
-    pub value: u64,
-    pub unique_id: Uuid,
-    pub pubkey: [u8; 33],
-}
-
 impl Transaction {
-    todo!()
+    pub fn new(
+        inputs: Vec<TransactionInput>,
+        outputs: Vec<TransactionOutput>
+    ) -> Self {
+        Transaction {
+            inputs,
+            outputs,
+        }
+    }
+    pub fn hash(&self) -> ! {
+        unimplemented!()
+    }
 }

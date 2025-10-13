@@ -2,6 +2,7 @@ use crate::U256;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use sha256::digest;
+
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct Hash(U256);
 impl Hash {

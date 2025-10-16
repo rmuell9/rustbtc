@@ -1,6 +1,9 @@
-use crate::U256;
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use crate::crypto::{PublicKey, Signature};
+use crate::sha256::Hash;
+use crate::util::MerkleRoot;
+use crate::U256;
 use uuid::Uuid;
 
 // Type Definitions
@@ -8,42 +11,6 @@ use uuid::Uuid;
 pub struct Blockchain {
     pub blocks: Vec<Block>,
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Block {
-    pub header: BlockHeader,
-    pub transactions: Vec<Transaction>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BlockHeader {
-    pub timestamp: DateTime<Utc>,
-    pub nonce: u64,
-    pub prev_block_hash: [u8; 32],
-    pub merkle_root: [u8; 32],
-    pub target: U256,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Transaction {
-    pub inputs: Vec<TransactionInput>,
-    pub outputs: Vec<TransactionOutput>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TransactionInput {
-    pub prev_transaction_output_hash: [u8; 32],
-    pub signature: [u8; 64], // dummy type
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TransactionOutput {
-    pub value: u64,
-    pub unique_id: Uuid,
-    pub pubkey: [u8; 33], // dummy type
-}
-
-// Methods
 impl Blockchain {
     pub fn new() -> Self {
         Blockchain { blocks: vec![] }
@@ -53,6 +20,11 @@ impl Blockchain {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Block {
+    pub header: BlockHeader,
+    pub transactions: Vec<Transaction>,
+}
 impl Block {
     pub fn new(
         header: BlockHeader,
@@ -63,17 +35,25 @@ impl Block {
             transactions,
         }
     }
-    pub fn hash(&self) -> ! {
-        unimplemented!()
+    pub fn hash(&self) -> Hash {
+        Hash::hash(self)
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BlockHeader {
+    pub timestamp: DateTime<Utc>,
+    pub nonce: u64,
+    pub prev_block_hash: Hash,
+    pub merkle_root: MerkleRoot,
+    pub target: U256,
+}
 impl BlockHeader {
     pub fn new(
         timestamp: DateTime<Utc>,
         nonce: u64,
-        prev_block_hash: [u8; 32],
-        merkle_root: [u8; 32],
+        prev_block_hash: Hash,
+        merkle_root: MerkleRoot,
         target: U256,
     ) -> Self {
         BlockHeader {
@@ -84,10 +64,34 @@ impl BlockHeader {
             target,
         }
     }
-    pub fn hash(&self) -> ! {
-        unimplemented!()
+    pub fn hash(&self) -> Hash {
+        Hash::hash(self)
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Transaction {
+    pub inputs: Vec<TransactionInput>,
+    pub outputs: Vec<TransactionOutput>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TransactionInput {
+    pub prev_transaction_output_hash: Hash,
+    pub signature: Signature,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TransactionOutput {
+    pub value: u64,
+    pub unique_id: Uuid,
+    pub pubkey: PublicKey,
+}
+impl TransactionOutput {
+        pub fn hash(&self) -> Hash {
+            Hash::hash(self)
+        }
+    }
 
 impl Transaction {
     pub fn new(
@@ -99,7 +103,8 @@ impl Transaction {
             outputs,
         }
     }
-    pub fn hash(&self) -> ! {
-        unimplemented!()
+    pub fn hash(&self) -> Hash {
+        Hash::hash(self)
     }
 }
+

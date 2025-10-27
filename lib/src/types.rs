@@ -109,6 +109,64 @@ impl Block {
     pub fn hash(&self) -> Hash {
         Hash::hash(self)
     }
+
+    pub fn verify_transactions(
+        &self,
+        predicted_block_height: u64,
+        utxos: &HashMap<Hash, TransactionOutput>,
+    ) -> Result<()> {
+        let mut inputs: HashMap<Hash, TransactionOutput> =
+            HashMap::new();
+
+        if self.transactions.is_empty() {
+            return Err(BtcError::InvalidTransaction);
+        }
+        
+        self.verify_coinbase_transaction(
+            predicted_block_height,
+            utxos,
+        )?;
+
+        for transaction in &self.transactions.iter().skip(1) {
+            let mut input_value = 0;
+            let mut output_value = 0;
+            for input in &transaction.inputs {
+                let prev_output = utxos.get(
+                    &input.prev_transaction_output_hash,
+                );
+                if prev_output.is_none() {
+                    return Err(BtcError::InvalidTransaction);
+                }
+                let prev_output = prev_output.unwrap();
+
+                if inputs.contains_key(
+                    &input.prev_transaction_output_hash,
+                ) {
+                    return Err(BtcError::InvalidTransaction,);
+                }
+
+                if !input.signature.verify(
+                    &input.prev_transaction_output_hash,
+                    &prev_output.pubkey,
+                ) {
+                    return Err(BtcError::InvalidSignature);
+                }
+                input_value += prev_output.value;
+                inputs.insert(
+                    input.prev_transaction_output_hash,
+                    prev_output.clone(),
+                );
+            }
+            for output in &transaction.outputs {
+                output_value += output.value;
+            }
+
+            if input_value < output_value {
+                return Err(BtcError::InvalidTransaction);
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

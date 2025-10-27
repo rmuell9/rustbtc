@@ -1,10 +1,11 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use crate::crypto::{PublicKey, Signature};
 use crate::sha256::Hash;
 use crate::util::MerkleRoot;
 use crate::U256;
-use uuid::Uuid;
+use crate::error::{BtcError, Result};
 
 // Type Definitions
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -15,8 +16,52 @@ impl Blockchain {
     pub fn new() -> Self {
         Blockchain { blocks: vec![] }
     }
-    pub fn add_block(&mut self, block: Block) {
+    pub fn add_block(&mut self, 
+        block: Block) -> Result<()> {
+        if self.blocks.is_empty() {
+            if block.header.prev_block_hash != Hash::zero()
+            {
+                println!("zero hash");
+                return Err(BtcError::InvalidBlock);
+            }
+        } else {
+            let last_block = self.blocks.last().unwrap();
+            if block.header.prev_block_hash != last_block.hash()
+            {
+                println!("prev hash is wrong");
+                return Err(BtcError::InvalidBlock);
+            }
+
+            if !block
+                .header
+                .hash()
+                .matches_target(block.header.target)
+            {
+                println!("doesn't match target");
+                return Err(BtcError::InvalidBlock);
+            }
+
+            let calculated_merkle_root =
+                MerkleRoot::calculate(&block.transactions);
+            if calculated_merkle_root != block.header.merkle_root
+            {
+                println!("invalid merkle root");
+                return Err(BtcError::InvalidMerkleRoot);
+            }
+
+            if block.header.timestamp
+                <= last_block.header.timestamp
+            {
+                return Err(BtcError::InvalidBlock);
+            }
+
+            block.verify_transactions( // will add method in future
+                self.block_height(),
+                &self.utxos,
+            )?;
+        }
         self.blocks.push(block);
+        Ok(())
     }
 }
 

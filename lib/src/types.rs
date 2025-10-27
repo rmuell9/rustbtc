@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -10,12 +11,37 @@ use crate::error::{BtcError, Result};
 // Type Definitions
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Blockchain {
+    pub utxos: HashMap<Hash, TransactionOutput>,
     pub blocks: Vec<Block>,
 }
 impl Blockchain {
     pub fn new() -> Self {
-        Blockchain { blocks: vec![] }
+        Blockchain { 
+            utxos: HashMap::new(),
+            blocks: vec![],
+        }
     }
+    
+    pub fn rebuild_utxos(&mut self) {
+        for block in &self.blocks {
+            for transactions in &block.transactions {
+                for input in &transaction.inputs {
+                    self.utxos.remove(
+                        &input.prev_transaction_output_hash,
+                    );
+                }
+                for output in transaction.outputs.iter() {
+                    self.utxos.insert(
+                        transaction.hash(),
+                        output.clone()
+                    );
+                }
+            }
+        }
+    }
+
+
+
     pub fn add_block(&mut self, 
         block: Block) -> Result<()> {
         if self.blocks.is_empty() {

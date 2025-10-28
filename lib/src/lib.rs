@@ -6,7 +6,7 @@ construct_uint! {
     pub struct U256(4);
 }
 
-pub const INITITAL_REWARD: u64 = 50;
+pub const INITIAL_REWARD: u64 = 50;
 
 pub const HALVING_INTERVAL: u64 = 210;
 

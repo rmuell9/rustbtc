@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::mem::transmute;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -110,6 +111,62 @@ impl Block {
         Hash::hash(self)
     }
 
+    pub fn calculate_miner_fees(
+        &self,
+        utxos: &HashMap<Hash, TransactionOutput>,
+    ) -> Result<u64> {
+        let mut inputs: HashMap<Hash, TransactionOutput> =
+            HashMap::new();
+        let mut outputs: HashMap<Hash, TransactionOutput> =
+            HashMap::new();
+
+        for transaction in self.transactions.iter().skip(1)
+        {
+            for input in &transaction.inputs {
+                let prev_output = utxos.get(
+                    &input.prev_transaction_output_hash,
+                );
+                if prev_output.is_none() {
+                    return Err(BtcError::InvalidTransaction,);
+                }
+                let prev_output = prev_output.unwrap();
+                if inputs.contains_key(
+                    &input.prev_transaction_output_hash,
+                ) {
+                    return Err(BtcError::InvalidTransaction);
+                }
+                inputs.insert(
+                    input.prev_transaction_output_hash,
+                    prev_output.clone()
+                );
+            }
+            inputs.insert(
+                input.prev_transaction_output_hash,
+                prev_output.clone(),
+            );
+        }
+        for output in &transaction.outputs {
+            if outputs.contains_key(&output.hash())
+            {
+                return Err(BtcError::InvalidTransaction);
+            }
+            outputs.insert(
+                output.hash(),
+                output.clone(),
+            );
+        }
+      }    
+    let input_value: u64 = inputs
+        .values()
+        .map(|output| output.value)
+        .sum();
+    let output_value: u64 = outputs
+        .values()
+        .map(|output| output.value)
+        .sum();
+    Ok(input_value - output_value)
+    }
+
     pub fn verify_transactions(
         &self,
         predicted_block_height: u64,
@@ -123,9 +180,38 @@ impl Block {
         }
         
         self.verify_coinbase_transaction(
-            predicted_block_height,
-            utxos,
-        )?;
+            &self,
+            predicted_block_height: u64,
+            utxos: &HashMap<Hash, TransactionOutput>,
+        ) -> Result<()> {
+            let coinbase_transaction = &self.transactions[0];
+            if coinbase_transaction.inputs.len() != 0 {
+                return Err(BtcError::InvalidTransaction);
+            }
+            if coinbase_transaction.outputs.len() == 0 {
+                return Err(BtcError::InvalidTransaction);
+            }
+            let miner_fees = self.calculate_miner_fees(utxos)?;
+            let block_reward = crate::INITIAL_REWARD
+                * 10u64.pow(8)
+                / 2u64.pow(
+                    (predicted_block_height
+                        / crate::HALVING_INTERVAL)
+                        as u32,
+                );
+            let total_coinbase_outputs: u64 =
+                coinbase_transaction
+                    .outputs
+                    .iter()
+                    .map(|output| output.value)
+                    .sum();
+            if total_coinbase_outputs
+                != block_reward + miner_fees
+            {
+                return Err(BtcError::InvalidTransaction);
+            }
+            Ok(())
+        }
 
         for transaction in &self.transactions.iter().skip(1) {
             let mut input_value = 0;

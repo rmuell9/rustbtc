@@ -6,7 +6,7 @@ use ecdsa::{
 };
 use k256::Secp256k1;
 use serde::{Deserialize, Serialize};
-use crate::{sha256::Hash, types::TransactionOutput};
+use crate::{sha256::Hash};
 use ecdsa::signature::Verifier;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
